@@ -12,9 +12,17 @@ def generar_dato(fridge_id):
     }
 
 while True:
-    with open("fridge_data.json", "w") as f:
-        for i in range(100):
-            f.write(json.dumps(generar_dato(i)) + "\n")
 
-    print("Datos generados...")
+    datos = []
+
+    for i in range(100):
+        datos.append(generar_dato(i))
+
+    filename = f"data/fridge_{int(time.time())}.json"
+
+    with open(filename, "w") as f:
+        json.dump(datos, f, indent=2)
+
+    print(f"{filename} generado")
+
     time.sleep(5)
