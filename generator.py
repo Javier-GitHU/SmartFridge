@@ -2,8 +2,12 @@ import json
 import random
 import time
 from datetime import datetime
+import os
+
+os.makedirs("../data", exist_ok=True)
 
 def generar_dato(fridge_id):
+
     return {
         "fridge_id": fridge_id,
         "timestamp": datetime.now().isoformat(),
@@ -16,11 +20,15 @@ while True:
     datos = []
 
     for i in range(100):
-        datos.append(generar_dato(i))
 
-    filename = f"data/fridge_{int(time.time())}.json"
+        datos.append(
+            generar_dato(i)
+        )
+
+    filename = f"../data/fridge_{int(time.time())}.json"
 
     with open(filename, "w") as f:
+
         json.dump(datos, f, indent=2)
 
     print(f"{filename} generado")
