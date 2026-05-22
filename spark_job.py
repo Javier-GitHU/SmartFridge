@@ -1,7 +1,11 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import avg, col
 from pymongo import MongoClient
+import os
+import sys
 
+os.environ["PYSPARK_PYTHON"] = sys.executable
+os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 # =========================
 # MONGODB
 # =========================
@@ -50,7 +54,5 @@ avg_df.show()
 alerts_df = df.filter(
     col("temperature") > 10
 )
-
 print("\n=== ALERTAS TEMPERATURA ===")
-
 alerts_df.show()
