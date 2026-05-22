@@ -4,6 +4,7 @@ from ultralytics import YOLO
 from PIL import Image
 from typing import Optional
 from pymongo import MongoClient
+from gridfs import GridFS
 from datetime import datetime
 
 import io
@@ -12,7 +13,7 @@ import json
 import httpx
 
 # ─────────────────────────────────────────────────────────────
-# CONFIGURACIÓN
+# CONFIG
 # ─────────────────────────────────────────────────────────────
 
 N8N_WEBHOOK_URL = os.getenv(
@@ -20,21 +21,30 @@ N8N_WEBHOOK_URL = os.getenv(
     "https://iwh.persone.chat/webhook/578126b7-c4de-4b6b-8151-d6d6549df198"
 )
 
-# MongoDB
+# ─────────────────────────────────────────────────────────────
+# MONGODB
+# ─────────────────────────────────────────────────────────────
+
 client = MongoClient("mongodb://localhost:27017/")
 db = client["smartfridge"]
 
-# Carpeta imágenes
-os.makedirs("images", exist_ok=True)
+# GridFS
+fs = GridFS(db)
 
-# Crear app
+# ─────────────────────────────────────────────────────────────
+# FASTAPI
+# ─────────────────────────────────────────────────────────────
+
 app = FastAPI(
     title="Smart Fridge AI",
-    description="API que detecta ingredientes en fotos de neveras y orquesta el chat con el chef",
-    version="0.3.0"
+    description="API IA neveras inteligentes",
+    version="1.0.0"
 )
 
+# ─────────────────────────────────────────────────────────────
 # CORS
+# ─────────────────────────────────────────────────────────────
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,23 +53,26 @@ app.add_middleware(
 )
 
 # ─────────────────────────────────────────────────────────────
-# CARGAR YOLO
+# YOLO
 # ─────────────────────────────────────────────────────────────
 
-print("⏳ Cargando modelo YOLOv8...")
+print("⏳ Cargando YOLO...")
 
 model = YOLO("models/best.pt")
 
-print(f"✅ Modelo cargado. Clases disponibles: {len(model.names)}")
-print(f"🔗 Webhook de n8n configurado en: {N8N_WEBHOOK_URL}")
+print("✅ YOLO cargado")
 
 # ─────────────────────────────────────────────────────────────
-# DETECCIÓN YOLO
+# DETECCIÓN
 # ─────────────────────────────────────────────────────────────
 
 def detect_from_image(image: Image.Image, confidence: float = 0.4):
 
-    results = model.predict(image, conf=confidence, verbose=False)
+    results = model.predict(
+        image,
+        conf=confidence,
+        verbose=False
+    )
 
     detections = []
 
@@ -99,9 +112,7 @@ def root():
 
     return {
         "status": "ok",
-        "service": "smart-fridge-api",
-        "num_classes": len(model.names),
-        "n8n_webhook": N8N_WEBHOOK_URL
+        "service": "smart-fridge-api"
     }
 
 # ─────────────────────────────────────────────────────────────
@@ -116,81 +127,6 @@ def list_classes():
     }
 
 # ─────────────────────────────────────────────────────────────
-# DETECT
-# ─────────────────────────────────────────────────────────────
-
-@app.post("/detect")
-async def detect_ingredients(
-    file: UploadFile = File(...),
-    confidence: float = 0.4
-):
-
-    if not file.content_type or not file.content_type.startswith("image/"):
-
-        raise HTTPException(
-            status_code=400,
-            detail="El archivo debe ser una imagen"
-        )
-
-    contents = await file.read()
-
-    # Timestamp del request
-    message_timestamp = datetime.now().isoformat()
-
-    # Guardar imagen
-    image_path = f"images/{datetime.now().timestamp()}_{file.filename}"
-
-    with open(image_path, "wb") as f:
-        f.write(contents)
-
-    try:
-
-        image = Image.open(
-            io.BytesIO(contents)
-        ).convert("RGB")
-
-    except Exception:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Imagen inválida o corrupta"
-        )
-
-    detections, ingredients = detect_from_image(
-        image,
-        confidence
-    )
-
-    # ─────────────────────────────────────────
-    # GUARDAR EN MONGO
-    # ─────────────────────────────────────────
-
-    prediction_data = {
-        "timestamp": message_timestamp,
-        "image_path": image_path,
-        "ingredients": ingredients,
-        "detections": detections,
-        "total_detections": len(detections),
-        "image_size": {
-            "width": image.width,
-            "height": image.height
-        }
-    }
-
-    db.predictions.insert_one(prediction_data)
-
-    return {
-        "ingredients": ingredients,
-        "detections": detections,
-        "total_detections": len(detections),
-        "image_size": {
-            "width": image.width,
-            "height": image.height
-        },
-        "messageTimestamp": message_timestamp
-    }
-
-# ─────────────────────────────────────────────────────────────
 # CHAT
 # ─────────────────────────────────────────────────────────────
 
@@ -202,32 +138,38 @@ async def chat(
     file: Optional[UploadFile] = File(None)
 ):
 
-    # ─────────────────────────────────────────
-    # TIMESTAMP DEL MENSAJE
-    # ─────────────────────────────────────────
+    timestamp = datetime.now().isoformat()
 
-    message_timestamp = datetime.now().isoformat()
+    image_id = None
+    filename = None
+    detections = []
 
     # ─────────────────────────────────────────
-    # OBTENER INGREDIENTES
+    # FOTO
     # ─────────────────────────────────────────
 
     if file:
 
-        if file.content_type and not file.content_type.startswith("image/"):
+        if (
+            file.content_type and
+            not file.content_type.startswith("image/")
+        ):
 
             raise HTTPException(
                 status_code=400,
-                detail="El archivo debe ser una imagen"
+                detail="Debe ser una imagen"
             )
 
         contents = await file.read()
 
-        # Guardar imagen
-        image_path = f"images/{datetime.now().timestamp()}_{file.filename}"
+        # Guardar imagen en Mongo
+        image_id = fs.put(
+            contents,
+            filename=file.filename,
+            content_type=file.content_type
+        )
 
-        with open(image_path, "wb") as f:
-            f.write(contents)
+        filename = file.filename
 
         try:
 
@@ -239,27 +181,14 @@ async def chat(
 
             raise HTTPException(
                 status_code=400,
-                detail="Imagen inválida o corrupta"
+                detail="Imagen inválida"
             )
 
-        detections, ingredients = detect_from_image(
-            image,
-            confidence=0.4
-        )
-
-        # Guardar en Mongo
-        prediction_data = {
-            "timestamp": message_timestamp,
-            "image_path": image_path,
-            "ingredients": ingredients,
-            "detections": detections,
-            "total_detections": len(detections),
-            "sessionId": sessionId
-        }
-
-        db.predictions.insert_one(prediction_data)
+        detections, ingredients = detect_from_image(image)
 
     else:
+
+        # Ingredientes ya existentes
 
         try:
 
@@ -275,51 +204,71 @@ async def chat(
             ingredients = []
 
     # ─────────────────────────────────────────
-    # LLAMAR N8N
+    # N8N
     # ─────────────────────────────────────────
 
     payload = {
         "message": message or "¿Qué puedo cocinar con esto?",
         "ingredients": ingredients,
-        "sessionId": sessionId,
-        "messageTimestamp": message_timestamp
+        "sessionId": sessionId
     }
 
     try:
 
         async with httpx.AsyncClient(timeout=60.0) as client:
 
-            n8n_res = await client.post(
+            response = await client.post(
                 N8N_WEBHOOK_URL,
                 json=payload
             )
 
-            n8n_res.raise_for_status()
+            response.raise_for_status()
 
-            n8n_data = n8n_res.json()
+            n8n_data = response.json()
 
     except httpx.TimeoutException:
 
         raise HTTPException(
             status_code=504,
-            detail="El chef está tardando demasiado en responder."
+            detail="Timeout chef IA"
         )
 
     except httpx.HTTPError as e:
 
         raise HTTPException(
             status_code=502,
-            detail=f"Error llamando a n8n: {str(e)}"
+            detail=f"Error n8n: {str(e)}"
         )
 
+    chef_response = n8n_data.get("response", "")
+
     # ─────────────────────────────────────────
-    # RESPUESTA FINAL
+    # GUARDAR TODO EN MONGO
+    # ─────────────────────────────────────────
+
+    recipe_data = {
+        "timestamp": timestamp,
+        "sessionId": sessionId,
+        "user_message": message,
+        "ingredients": ingredients,
+        "detections": detections,
+        "chef_response": chef_response
+    }
+
+    if image_id:
+
+        recipe_data["image_id"] = str(image_id)
+        recipe_data["filename"] = filename
+
+    db.recipes.insert_one(recipe_data)
+
+    # ─────────────────────────────────────────
+    # RESPUESTA
     # ─────────────────────────────────────────
 
     return {
         "ingredients": ingredients,
-        "response": n8n_data.get("response", ""),
-        "messageTimestamp": message_timestamp
+        "response": chef_response
     }
 
 # ─────────────────────────────────────────────────────────────
