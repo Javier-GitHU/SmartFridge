@@ -45,8 +45,6 @@ para detectar ingredientes en tu nevera y proponerte recetas adaptadas a lo que 
 10. [Endpoints de la API](#-endpoints-de-la-api)
 11. [Esquema de datos en MongoDB](#-esquema-de-datos-en-mongodb)
 12. [Flujo de n8n](#-flujo-de-n8n-chef-cucharón)
-13. [Resolución de problemas](#-resolución-de-problemas)
-14. [Mejoras futuras](#-mejoras-futuras)
 15. [Licencia](#-licencia)
 
 ---
@@ -426,46 +424,6 @@ El agente está configurado con un prompt sistema extenso (**v3**) cuyas reglas 
 - 🔒 **Discreción:** nunca menciona que las recetas vienen de una API externa.
 
 Cuando Spoonacular devuelve recetas, el chef las **traduce y adapta** al español. Si no hay candidatas adecuadas, improvisa platos coherentes con los ingredientes disponibles.
-
----
-
-## 🐛 Resolución de problemas
-
-<details>
-<summary><b>YOLO no carga el modelo</b></summary>
-
-Verifica que `models/best.pt` existe y pesa ~22 MB. Si lo descargaste con Git LFS, asegúrate de haber ejecutado `git lfs pull`.
-</details>
-
-<details>
-<summary><b>PySpark falla en Windows con error "py4j" o "Hadoop"</b></summary>
-
-- Instala Java 17+ y crea `JAVA_HOME` apuntando a la carpeta del JDK.
-- Descarga `winutils.exe` y configúralo en `HADOOP_HOME\bin\`.
-- Asegúrate de que `PYSPARK_PYTHON` y `PYSPARK_DRIVER_PYTHON` apuntan al mismo intérprete (ya lo hace `spark_job.py` automáticamente).
-</details>
-
-<details>
-<summary><b>NiFi no encuentra los JSON generados</b></summary>
-
-- En el procesador **GetFile**, sustituye `/data` por la ruta absoluta a la carpeta `data/` de tu equipo.
-- Si NiFi corre en Docker, monta esa carpeta como volumen: `-v C:\Users\...\data:/data`.
-- Comprueba que el **MongoDBControllerService** apunta a la URI correcta (`mongodb://localhost:27017` si MongoDB está en local, o `mongodb://host.docker.internal:27017` si NiFi está en Docker).
-</details>
-
-<details>
-<summary><b>FastAPI devuelve 504 Timeout chef IA</b></summary>
-
-- Verifica que tu webhook de n8n está activo y respondiendo.
-- Comprueba que `N8N_WEBHOOK_URL` apunta al endpoint correcto.
-- Si la primera petición del agente tarda mucho (cold start), aumenta el timeout en `httpx.AsyncClient(timeout=...)`.
-</details>
-
-<details>
-<summary><b>El frontend recibe error CORS</b></summary>
-
-La API ya tiene CORS abierto (`allow_origins=["*"]`). Si aun así falla, asegúrate de que estás llamando a la URL correcta y no mezclando `http://` con `https://`.
-</details>
 
 ---
 
