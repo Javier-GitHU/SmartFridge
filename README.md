@@ -129,7 +129,7 @@ SmartFridge/
 
 | Capa | Tecnología | Uso |
 |---|---|---|
-| **Lenguaje** | Python 3.10+ | Núcleo de toda la lógica |
+| **Lenguaje** | Python 3.11 | Núcleo de toda la lógica |
 | **API REST** | FastAPI + Uvicorn | Endpoint `/chat`, `/classes`, `/` |
 | **Visión artificial** | YOLOv8 (Ultralytics) | Detección de ingredientes (`models/best.pt`) |
 | **Dataset visión** | Roboflow — *Fridge Ingredient Detection* | Imágenes "in‑the‑wild" |
@@ -147,7 +147,7 @@ SmartFridge/
 
 Antes de empezar necesitas tener instalado:
 
-- **Python 3.10 o superior** ([descargar](https://www.python.org/downloads/))
+- **Python 3.11** ([descargar](https://www.python.org/downloads/))
 - **MongoDB 7.0** corriendo en `localhost:27017` ([instalar](https://www.mongodb.com/try/download/community))
 - **Apache NiFi 2.9** ([descargar](https://nifi.apache.org/download.html))
 - **Apache Spark 4.1** + **Java 17+** configurados en `PATH` ([Spark](https://spark.apache.org/downloads.html))
@@ -156,7 +156,7 @@ Antes de empezar necesitas tener instalado:
   - 🔑 **OpenAI API Key** (para el LLM)
   - 🔑 **Spoonacular API Key** (gratuita en [spoonacular.com](https://spoonacular.com/food-api))
 
-> 💡 En Windows, recomendamos crear las variables de entorno `JAVA_HOME`, `SPARK_HOME` y `HADOOP_HOME` antes de ejecutar `spark_job.py`.
+> 💡 En Windows, recomendamos crear las variables de entorno `JAVA_HOME`, `SPARK_HOME`, `PYSPARK_PYTHON`, `PYSPARK_DRIVER_PYTHON`  y `HADOOP_HOME` antes de ejecutar `spark_job.py`.
 
 ---
 
