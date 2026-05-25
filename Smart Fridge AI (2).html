@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart Fridge AI · Tu chef personal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root {
+    --bg:          #FAF7F2;
+    --bg-warm:     #F3EBDF;
+    --surface:     #FFFFFF;
+    --surface-2:   #FBF7F1;
+    --text:        #25221E;
+    --text-muted:  #6B635A;
+    --text-soft:   #8E867C;
+    --accent:      #D97757;
+    --accent-2:    #E89373;
+    --accent-dark: #B85F40;
+    --olive:       #4A6B4D;
+    --olive-soft:  #E4ECDE;
+    --olive-2:     #6C8D6F;
+    --border:      #EBE1D2;
+    --border-soft: #F1E9DB;
+    --user-bg:     #25221E;
+    --user-text:   #FAF7F2;
+    --shadow-sm:   0 1px 2px rgba(58,40,20,.04), 0 1px 1px rgba(58,40,20,.03);
+    --shadow-md:   0 4px 16px -2px rgba(58,40,20,.06), 0 2px 6px -1px rgba(58,40,20,.04);
+    --shadow-lg:   0 18px 40px -12px rgba(58,40,20,.18), 0 4px 12px -2px rgba(58,40,20,.06);
+    --radius:      18px;
+    --radius-sm:   12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ─── Ambient background: very slow breathing warm gradients ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(60% 50% at 18% 12%, rgba(217,119,87,.10), transparent 60%),
+      radial-gradient(50% 45% at 85% 22%, rgba(232,147,115,.07), transparent 60%),
+      radial-gradient(55% 50% at 78% 95%, rgba(74,107,77,.08), transparent 60%),
+      radial-gradient(45% 40% at 12% 88%, rgba(108,141,111,.05), transparent 60%);
+    animation: drift 28s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Subtle noise overlay for texture */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.1 0 0 0 0 0.05 0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity: .04;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes drift {
+    0%   { transform: translate3d(0,0,0) scale(1); }
+    50%  { transform: translate3d(-2%, 1%, 0) scale(1.04); }
+    100% { transform: translate3d(2%, -1%, 0) scale(1.02); }
+  }
+
+  /* ─── Floating produce decoration ─── */
+  .decor {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+  .floater {
+    position: absolute;
+    opacity: .85;
+    filter: drop-shadow(0 8px 16px rgba(58,40,20,.10));
+    will-change: transform;
+  }
+  .floater svg { display: block; width: 100%; height: 100%; }
+
+  .f1 { top: 4%;  right: 4%;  width: 110px; height: 110px; animation: floatA 16s ease-in-out infinite; }
+  .f2 { top: 38%; right: 2%;  width: 80px;  height: 80px;  animation: floatB 22s ease-in-out infinite; }
+  .f3 { top: 18%; left: 3%;   width: 72px;  height: 72px;  animation: floatC 19s ease-in-out infinite; }
+  .f4 { bottom: 18%; left: 2.5%; width: 120px; height: 120px; animation: floatD 24s ease-in-out infinite; }
+  .f5 { bottom: 8%; right: 7%;   width: 90px;  height: 90px;  animation: floatA 20s ease-in-out infinite reverse; }
+  .f6 { top: 62%; left: 6%;    width: 60px;  height: 60px;  animation: floatB 17s ease-in-out infinite reverse; }
+
+  @keyframes floatA {
+    0%, 100% { transform: translate(0, 0) rotate(-6deg); }
+    50%      { transform: translate(10px, -16px) rotate(6deg); }
+  }
+  @keyframes floatB {
+    0%, 100% { transform: translate(0, 0) rotate(4deg); }
+    50%      { transform: translate(-12px, 14px) rotate(-8deg); }
+  }
+  @keyframes floatC {
+    0%, 100% { transform: translate(0, 0) rotate(-3deg); }
+    33%      { transform: translate(14px, -10px) rotate(5deg); }
+    66%      { transform: translate(-6px, 8px) rotate(-7deg); }
+  }
+  @keyframes floatD {
+    0%, 100% { transform: translate(0, 0) rotate(8deg); }
+    50%      { transform: translate(-10px, -18px) rotate(-4deg); }
+  }
+
+  @media (max-width: 720px) {
+    .f2, .f3, .f6 { display: none; }
+    .f1, .f5 { width: 70px; height: 70px; opacity: .55; }
+    .f4 { width: 80px; height: 80px; opacity: .55; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .floater { animation: none !important; }
+    body::before { animation: none !important; }
+  }
+
+  /* ─── Header ─── */
+  header {
+    position: relative;
+    z-index: 5;
+    padding: 1.05rem 1.75rem;
+    border-bottom: 1px solid var(--border-soft);
+    background: rgba(255,255,255,.7);
+    backdrop-filter: saturate(140%) blur(16px);
+    -webkit-backdrop-filter: saturate(140%) blur(16px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+
+  .brand { display: flex; align-items: center; gap: .85rem; }
+
+  .brand-mark {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 60%, #F0B097 100%);
+    display: grid; place-items: center;
+    color: white;
+    box-shadow: 0 4px 14px -4px rgba(217,119,87,.55), inset 0 1px 0 rgba(255,255,255,.4);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .brand-mark { overflow: visible; }
+  .brand-mark .steam {
+    position: absolute;
+    top: 11px; left: 50%;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: rgba(110, 100, 90, .85);
+    filter: blur(2px);
+    opacity: 0;
+    transform: translateX(-50%);
+    animation: steam 2.6s ease-out infinite;
+    z-index: 2;
+  }
+  .brand-mark .steam:nth-child(2) { left: 32%; animation-delay: .85s; width: 10px; height: 10px; }
+  .brand-mark .steam:nth-child(3) { left: 68%; animation-delay: 1.7s; width: 11px; height: 11px; }
+  @keyframes steam {
+    0%   { opacity: 0;   transform: translate(-50%, 4px)  scale(.4); filter: blur(1.5px); }
+    20%  { opacity: 1;   filter: blur(2px); }
+    60%  { opacity: .7;  transform: translate(calc(-50% - 6px), -18px) scale(1.4); filter: blur(3px); }
+    100% { opacity: 0;   transform: translate(calc(-50% + 6px), -34px) scale(2.1); filter: blur(5px); }
+  }
+
+  .brand-text { display: flex; flex-direction: column; gap: 2px; line-height: 1.15; }
+
+  .brand h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .brand h1 .accent {
+    background: linear-gradient(110deg, var(--accent) 0%, var(--accent-dark) 40%, var(--accent) 70%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 5s ease-in-out infinite;
+    font-style: italic;
+  }
+  @keyframes shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+  .brand .tagline {
+    font-size: .78rem;
+    color: var(--text-muted);
+    font-style: italic;
+    letter-spacing: .01em;
+  }
+
+  /* ─── Ingredient pill (top right) ─── */
+  .ingredient-pill {
+    display: none;
+    align-items: center;
+    gap: .55rem;
+    background: var(--olive);
+    color: white;
+    padding: .42rem .85rem .42rem .55rem;
+    border-radius: 100px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    border: none;
+    box-shadow: 0 4px 14px -4px rgba(74,107,77,.45);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .ingredient-pill.active { display: inline-flex; animation: pillIn .5s cubic-bezier(.2,.9,.3,1.2); }
+  .ingredient-pill:hover { transform: translateY(-1px); box-shadow: 0 8px 22px -6px rgba(74,107,77,.55); }
+  .ingredient-pill .dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(255,255,255,.2);
+    display: grid; place-items: center;
+    font-size: .7rem;
+  }
+  .ingredient-pill .dot::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: #B8E1B5;
+    box-shadow: 0 0 0 0 rgba(184,225,181,.6);
+    animation: ping 2s ease-out infinite;
+  }
+  @keyframes ping {
+    0%   { box-shadow: 0 0 0 0 rgba(184,225,181,.6); }
+    80%  { box-shadow: 0 0 0 6px rgba(184,225,181,0); }
+    100% { box-shadow: 0 0 0 0 rgba(184,225,181,0); }
+  }
+  @keyframes pillIn {
+    from { opacity: 0; transform: translateY(-6px) scale(.92); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Floating ingredient drawer (under the pill) */
+  .ingredient-drawer {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: .9rem 1rem;
+    box-shadow: var(--shadow-lg);
+    width: min(360px, 86vw);
+    opacity: 0;
+    transform: translateY(-6px) scale(.96);
+    transform-origin: top right;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .22s cubic-bezier(.2,.9,.3,1.2);
+    z-index: 50;
+  }
+  .ingredient-drawer.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .ingredient-drawer .label {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--text-soft);
+    margin-bottom: .55rem;
+    font-weight: 600;
+  }
+  .ingredient-drawer .chips {
+    display: flex; flex-wrap: wrap; gap: .35rem;
+  }
+  .ingredient-drawer .chip-mini {
+    background: var(--olive-soft);
+    color: var(--olive);
+    padding: .25rem .65rem;
+    border-radius: 100px;
+    font-size: .78rem;
+    font-weight: 500;
+  }
+
+  /* ─── Main scroll area ─── */
+  main {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 2rem 1rem 1.5rem;
+    position: relative;
+    z-index: 2;
+    scroll-behavior: smooth;
+  }
+  main::-webkit-scrollbar { width: 10px; }
+  main::-webkit-scrollbar-track { background: transparent; }
+  main::-webkit-scrollbar-thumb { background: rgba(107, 99, 90, .18); border-radius: 100px; border: 3px solid transparent; background-clip: padding-box; }
+  main::-webkit-scrollbar-thumb:hover { background: rgba(107, 99, 90, .35); background-clip: padding-box; }
+
+  .chat {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    padding-bottom: 1rem;
+  }
+
+  /* ─── Empty state hero ─── */
+  .hero {
+    max-width: 760px;
+    margin: 1rem auto 0;
+    text-align: center;
+    padding: 1.5rem 1rem 0;
+    animation: heroIn .8s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes heroIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hero .eyebrow {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .72rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--olive);
+    background: var(--olive-soft);
+    padding: .35rem .75rem; border-radius: 100px;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+  }
+  .hero .eyebrow::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--olive); animation: ping 2s ease-out infinite;
+  }
+  .hero h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(1.7rem, 4vw, 2.4rem);
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: .65rem;
+    text-wrap: balance;
+  }
+  .hero h2 em {
+    font-style: italic;
+    background: linear-gradient(120deg, var(--accent) 0%, var(--accent-dark) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p {
+    color: var(--text-muted);
+    font-size: 1rem;
+    max-width: 460px;
+    margin: 0 auto 1.6rem;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .7rem;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .qa-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1rem .9rem;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    color: inherit;
+    transition: transform .25s cubic-bezier(.2,.9,.3,1.2), box-shadow .25s ease, border-color .25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .qa-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(217,119,87,.0), rgba(217,119,87,.08));
+    opacity: 0; transition: opacity .25s ease;
+  }
+  .qa-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--accent-2); }
+  .qa-card:hover::before { opacity: 1; }
+  .qa-card .qa-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--bg-warm);
+    display: grid; place-items: center;
+    margin-bottom: .65rem;
+    color: var(--accent);
+    transition: transform .35s cubic-bezier(.2,.9,.3,1.6);
+  }
+  .qa-card:hover .qa-icon { transform: rotate(-8deg) scale(1.08); }
+  .qa-card .qa-title { font-weight: 600; font-size: .92rem; margin-bottom: .15rem; color: var(--text); }
+  .qa-card .qa-sub { font-size: .78rem; color: var(--text-muted); line-height: 1.4; }
+
+  /* ─── Messages ─── */
+  .message {
+    display: flex;
+    gap: .85rem;
+    animation: msgIn .45s cubic-bezier(.2,.7,.2,1.05) both;
+    align-items: flex-end;
+  }
+  .message.user { flex-direction: row-reverse; }
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white;
+    box-shadow: 0 3px 10px -3px rgba(217,119,87,.45);
+    margin-bottom: 4px;
+    user-select: none;
+  }
+  .avatar svg { display: block; }
+  .message.user .avatar {
+    background: linear-gradient(135deg, #3A352F, var(--user-bg));
+    box-shadow: 0 3px 10px -3px rgba(0,0,0,.25);
+  }
+  .message.system .avatar {
+    background: linear-gradient(135deg, var(--olive-2), var(--olive));
+    box-shadow: 0 3px 10px -3px rgba(74,107,77,.45);
+  }
+
+  .bubble {
+    padding: .85rem 1.1rem;
+    border-radius: var(--radius);
+    max-width: 85%;
+    line-height: 1.6;
+    font-size: .95rem;
+    word-wrap: break-word;
+    position: relative;
+  }
+
+  .message.user .bubble {
+    background: var(--user-bg);
+    color: var(--user-text);
+    border-bottom-right-radius: 6px;
+    box-shadow: var(--shadow-sm);
+  }
+  .message.assistant .bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 6px;
+    box-shadow: var(--shadow-sm);
+  }
+  .message.system .bubble {
+    background: var(--olive-soft);
+    color: #2F4632;
+    border: 1px solid #C9DCC8;
+    border-bottom-left-radius: 6px;
+  }
+
+  /* Image inside bubble */
+  .bubble .img-wrap {
+    position: relative;
+    margin: -.85rem -1.1rem .75rem;
+    border-radius: var(--radius) var(--radius) 4px 4px;
+    overflow: hidden;
+    line-height: 0;
+  }
+  .message.user .bubble .img-wrap { border-radius: var(--radius) var(--radius) 4px var(--radius); }
+  .bubble .img-wrap img {
+    max-width: 100%;
+    max-height: 320px;
+    width: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Scanning effect over user-uploaded photo while detecting */
+  .bubble .img-wrap.scanning::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(74,107,77,0) 0%, rgba(184,225,181,.55) 50%, rgba(74,107,77,0) 100%);
+    height: 40%;
+    animation: scan 1.6s ease-in-out infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .bubble .img-wrap.scanning::after {
+    content: 'Analizando';
+    position: absolute; left: 12px; bottom: 12px;
+    background: rgba(0,0,0,.55);
+    color: white;
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: .3rem .65rem;
+    border-radius: 100px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: pulseDim 1.4s ease-in-out infinite;
+  }
+  @keyframes scan {
+    0%   { transform: translateY(-100%); }
+    100% { transform: translateY(250%); }
+  }
+  @keyframes pulseDim {
+    0%, 100% { opacity: .9; }
+    50%      { opacity: .55; }
+  }
+
+  /* Markdown styles inside assistant bubble */
+  .bubble h1, .bubble h2, .bubble h3 {
+    font-family: 'Fraunces', serif;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+  .bubble h2 {
+    font-size: 1.32rem;
+    font-weight: 600;
+    margin: .15rem 0 .55rem;
+    color: var(--accent-dark);
+    text-wrap: balance;
+  }
+  .bubble h2 + p { margin-top: .25rem; }
+  .bubble h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 1rem 0 .35rem;
+    color: var(--olive);
+    display: flex; align-items: center; gap: .4rem;
+  }
+  .bubble h3::before {
+    content: ''; display: inline-block;
+    width: 14px; height: 1.5px;
+    background: var(--olive);
+    border-radius: 2px;
+  }
+  .bubble strong { color: var(--accent-dark); font-weight: 700; }
+  .message.user .bubble strong { color: var(--accent-2); }
+
+  .bubble ol, .bubble ul { padding-left: 1.4rem; margin: .55rem 0; }
+  .bubble ol { padding-left: 1.6rem; }
+  .bubble li { margin-bottom: .35rem; padding-left: .15rem; }
+  .bubble ul li::marker { color: var(--accent); content: '— '; }
+  .bubble ol li::marker { color: var(--accent); font-weight: 700; font-family: 'Fraunces', serif; }
+  .bubble p + p { margin-top: .55rem; }
+  .bubble p + h3, .bubble ul + h3, .bubble ol + h3 { margin-top: 1.1rem; }
+  .bubble code {
+    background: var(--bg-warm);
+    color: var(--accent-dark);
+    padding: .12rem .42rem;
+    border-radius: 5px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: .85em;
+  }
+  .bubble blockquote {
+    border-left: 3px solid var(--accent);
+    margin: .65rem 0;
+    padding: .15rem 0 .15rem .85rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .bubble hr {
+    border: none;
+    height: 1px;
+    background: var(--border);
+    margin: .85rem 0;
+  }
+
+  /* Ingredient chips inside system bubble */
+  .ingredient-chips {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    margin-top: .65rem;
+  }
+  .chip {
+    background: var(--surface);
+    color: var(--olive);
+    border: 1px solid #C9DCC8;
+    padding: .3rem .75rem;
+    border-radius: 100px;
+    font-size: .82rem;
+    font-weight: 600;
+    animation: chipPop .55s cubic-bezier(.2,.9,.3,1.6) backwards;
+    box-shadow: 0 1px 0 rgba(74,107,77,.04);
+    position: relative;
+  }
+  @keyframes chipPop {
+    0%   { opacity: 0; transform: scale(.4) translateY(8px) rotate(-6deg); }
+    60%  { transform: scale(1.08) translateY(-2px) rotate(2deg); }
+    100% { opacity: 1; transform: scale(1) translateY(0) rotate(0); }
+  }
+
+  /* Sparkles burst when chips arrive */
+  .sparkle {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    pointer-events: none;
+    animation: sparkle .9s ease-out forwards;
+    opacity: 0;
+  }
+  @keyframes sparkle {
+    0%   { opacity: 1; transform: translate(0,0) scale(.4); }
+    100% { opacity: 0; transform: translate(var(--dx,30px), var(--dy,-20px)) scale(0); }
+  }
+
+  /* ─── Typing indicators ─── */
+  .typing {
+    display: flex; gap: 6px;
+    padding: .25rem 0;
+    align-items: center;
+  }
+  .typing-label {
+    font-size: .88rem;
+    color: var(--text-muted);
+    margin-right: .5rem;
+    font-weight: 500;
+  }
+  .typing span.dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .typing span.dot:nth-child(2) { animation-delay: .15s; background: var(--accent-2); }
+  .typing span.dot:nth-child(3) { animation-delay: .3s; background: var(--olive-2); }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(.55); opacity: .35; }
+    40%           { transform: scale(1); opacity: 1; }
+  }
+
+  /* Cooking pan indicator */
+  .cooking-indicator {
+    display: flex; align-items: center; gap: .65rem;
+    color: var(--text-muted);
+    font-size: .9rem;
+    font-weight: 500;
+  }
+  .cooking-pan {
+    width: 28px; height: 28px;
+    position: relative;
+    display: inline-block;
+  }
+  .cooking-pan svg { width: 100%; height: 100%; overflow: visible; }
+  .cooking-pan .pan { transform-origin: 50% 70%; animation: panShake 1s ease-in-out infinite; }
+  @keyframes panShake {
+    0%, 100% { transform: rotate(-6deg); }
+    50%      { transform: rotate(6deg); }
+  }
+  .cooking-pan .steam-line {
+    transform-origin: bottom;
+    animation: steamRise 1.6s ease-in infinite;
+    opacity: 0;
+  }
+  .cooking-pan .steam-line:nth-child(2) { animation-delay: .4s; }
+  .cooking-pan .steam-line:nth-child(3) { animation-delay: .8s; }
+  @keyframes steamRise {
+    0%   { opacity: 0; transform: translateY(4px) scaleY(.6); }
+    40%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-10px) scaleY(1.2); }
+  }
+
+  /* ─── Footer / input ─── */
+  footer {
+    position: relative;
+    z-index: 5;
+    padding: 1rem 1rem 1.25rem;
+    background: linear-gradient(180deg, rgba(250,247,242,0) 0%, rgba(250,247,242,.85) 30%, var(--bg) 60%);
+    flex-shrink: 0;
+  }
+
+  .input-container { max-width: 760px; margin: 0 auto; }
+
+  .image-preview {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: .55rem .6rem .55rem .55rem;
+    margin-bottom: .6rem;
+    display: none;
+    align-items: center;
+    gap: .8rem;
+    box-shadow: var(--shadow-sm);
+    animation: previewIn .4s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .image-preview.active { display: flex; }
+  @keyframes previewIn {
+    from { opacity: 0; transform: translateY(8px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .image-preview img {
+    width: 52px; height: 52px;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+  .image-preview .meta { flex: 1; min-width: 0; }
+  .image-preview .meta .pf-title {
+    font-size: .78rem; color: var(--text-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .08em;
+    margin-bottom: 1px;
+  }
+  .image-preview .filename {
+    font-size: .88rem; color: var(--text); font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .image-preview .remove-btn {
+    background: var(--bg-warm);
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 1.05rem;
+    line-height: 1;
+    transition: background .2s, color .2s, transform .2s;
+  }
+  .image-preview .remove-btn:hover { background: var(--accent); color: white; transform: rotate(90deg); }
+
+  .input-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 26px;
+    padding: .35rem .35rem .35rem .45rem;
+    display: flex;
+    align-items: flex-end;
+    gap: .25rem;
+    transition: border-color .2s ease, box-shadow .25s ease, transform .25s ease;
+    box-shadow: var(--shadow-sm);
+  }
+  .input-bar:focus-within {
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 4px rgba(217,119,87,.1), var(--shadow-md);
+  }
+  .input-bar.has-file { border-color: var(--olive-2); box-shadow: 0 0 0 4px rgba(74,107,77,.08), var(--shadow-md); }
+
+  .icon-btn {
+    background: transparent;
+    border: none;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: background .2s, color .2s, transform .2s;
+  }
+  .icon-btn:hover { background: var(--bg-warm); color: var(--accent); }
+  .icon-btn:active { transform: scale(.92); }
+  .icon-btn svg { display: block; }
+
+  .icon-btn.send {
+    background: var(--accent);
+    color: white;
+    width: 42px; height: 42px;
+    box-shadow: 0 4px 14px -4px rgba(217,119,87,.55);
+    position: relative;
+  }
+  .icon-btn.send::before {
+    content: ''; position: absolute; inset: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(217,119,87,.45);
+    animation: sendPulse 2.6s ease-out infinite;
+  }
+  .icon-btn.send:disabled::before { animation: none; }
+  @keyframes sendPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(217,119,87,.4); }
+    70%  { box-shadow: 0 0 0 10px rgba(217,119,87,0); }
+    100% { box-shadow: 0 0 0 0 rgba(217,119,87,0); }
+  }
+  .icon-btn.send:hover:not(:disabled) { background: var(--accent-dark); color: white; transform: scale(1.05); }
+  .icon-btn.send:hover:not(:disabled) svg { transform: translateX(2px); }
+  .icon-btn.send svg { transition: transform .22s ease; }
+  .icon-btn.send:disabled {
+    background: var(--border);
+    color: var(--text-soft);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  textarea {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: .95rem;
+    color: var(--text);
+    resize: none;
+    padding: .68rem .25rem;
+    max-height: 160px;
+    line-height: 1.5;
+    min-width: 0;
+  }
+  textarea::placeholder { color: var(--text-soft); }
+
+  .input-footer {
+    text-align: center;
+    margin-top: .6rem;
+    font-size: .72rem;
+    color: var(--text-soft);
+    letter-spacing: .02em;
+  }
+  .input-footer kbd {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: .68rem;
+    color: var(--text-muted);
+  }
+
+  /* ─── Config banner ─── */
+  .config-banner {
+    background: #FFF3CD;
+    border: 1px solid #FFE69C;
+    color: #664D03;
+    padding: .85rem 1.25rem;
+    border-radius: 12px;
+    margin: 0 auto 1rem;
+    max-width: 760px;
+    font-size: .9rem;
+  }
+  .config-banner code {
+    background: rgba(0,0,0,.08);
+    padding: .1rem .4rem;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: .85rem;
+  }
+
+  /* ─── Drag & drop overlay ─── */
+  .drop-overlay {
+    position: fixed; inset: 0;
+    background: rgba(250,247,242,.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    animation: fadeIn .2s ease-out;
+  }
+  .drop-overlay.active { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .drop-target {
+    width: min(520px, 86vw);
+    padding: 3rem 2rem;
+    border: 2.5px dashed var(--accent);
+    border-radius: 28px;
+    background: var(--surface);
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    animation: dropPulse 2s ease-in-out infinite;
+  }
+  @keyframes dropPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.02); }
+  }
+  .drop-target .icon-big {
+    width: 64px; height: 64px;
+    margin: 0 auto 1rem;
+    background: var(--bg-warm);
+    border-radius: 20px;
+    display: grid; place-items: center;
+    color: var(--accent);
+  }
+  .drop-target h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: .35rem;
+  }
+  .drop-target p { color: var(--text-muted); font-size: .92rem; }
+
+  /* ─── Mobile ─── */
+  @media (max-width: 640px) {
+    header { padding: .85rem 1rem; gap: .5rem; }
+    .brand .tagline { display: none; }
+    .brand h1 { font-size: 1.2rem; }
+    .quick-actions { grid-template-columns: 1fr; max-width: 360px; }
+    .qa-card { display: flex; align-items: center; gap: .85rem; padding: .85rem; }
+    .qa-card .qa-icon { margin-bottom: 0; }
+    .qa-card .qa-body { flex: 1; }
+    .hero { padding-top: .5rem; }
+    main { padding: 1rem .6rem; }
+    .bubble { max-width: 90%; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Floating produce decoration -->
+  <div class="decor" aria-hidden="true">
+    <!-- Tomato -->
+    <div class="floater f1">
+      <svg viewBox="0 0 100 100">
+        <defs>
+          <radialGradient id="tom" cx="35%" cy="35%" r="75%">
+            <stop offset="0%" stop-color="#F1A382"/>
+            <stop offset="60%" stop-color="#D97757"/>
+            <stop offset="100%" stop-color="#B85F40"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="50" cy="58" rx="36" ry="32" fill="url(#tom)"/>
+        <path d="M50 26 L42 18 L36 22 L46 30 L42 36 L50 32 L58 36 L54 30 L64 22 L58 18 Z" fill="#5A7A5C"/>
+        <path d="M50 32 L50 40" stroke="#3F5841" stroke-width="2.5" stroke-linecap="round"/>
+        <ellipse cx="38" cy="50" rx="7" ry="5" fill="rgba(255,255,255,.30)"/>
+      </svg>
+    </div>
+
+    <!-- Lemon -->
+    <div class="floater f2">
+      <svg viewBox="0 0 100 100">
+        <defs>
+          <radialGradient id="lem" cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stop-color="#F8E4A8"/>
+            <stop offset="100%" stop-color="#D9B864"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="50" cy="52" rx="28" ry="34" fill="url(#lem)" transform="rotate(-18 50 52)"/>
+        <path d="M68 28 Q74 22 78 28" stroke="#6C8D6F" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="74" cy="24" rx="6" ry="3" fill="#7A9B7C" transform="rotate(40 74 24)"/>
+        <ellipse cx="42" cy="42" rx="6" ry="4" fill="rgba(255,255,255,.35)" transform="rotate(-18 42 42)"/>
+      </svg>
+    </div>
+
+    <!-- Avocado / leafy sprig -->
+    <div class="floater f3">
+      <svg viewBox="0 0 100 100">
+        <path d="M50 86 Q22 64 28 28 Q44 38 60 26 Q70 60 50 86 Z" fill="#7A9B7C"/>
+        <path d="M50 86 L50 32" stroke="#4A6B4D" stroke-width="1.8" fill="none"/>
+        <path d="M50 50 L38 42 M50 62 L36 58 M50 72 L40 74" stroke="#4A6B4D" stroke-width="1.2" stroke-linecap="round"/>
+        <path d="M50 50 L62 42 M50 62 L64 58 M50 72 L60 74" stroke="#4A6B4D" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Pear -->
+    <div class="floater f4">
+      <svg viewBox="0 0 100 100">
+        <defs>
+          <radialGradient id="pear" cx="40%" cy="55%" r="60%">
+            <stop offset="0%" stop-color="#E8D095"/>
+            <stop offset="100%" stop-color="#B89255"/>
+          </radialGradient>
+        </defs>
+        <path d="M50 14 Q47 26 43 34 Q26 38 26 60 Q26 86 50 86 Q74 86 74 60 Q74 38 57 34 Q53 26 50 14 Z" fill="url(#pear)"/>
+        <path d="M50 16 L50 8" stroke="#5A4030" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M50 10 Q56 6 62 8" stroke="#6C8D6F" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="58" cy="7" rx="6" ry="3" fill="#7A9B7C" transform="rotate(25 58 7)"/>
+        <ellipse cx="40" cy="54" rx="6" ry="10" fill="rgba(255,255,255,.30)"/>
+      </svg>
+    </div>
+
+    <!-- Garlic -->
+    <div class="floater f5">
+      <svg viewBox="0 0 100 100">
+        <defs>
+          <radialGradient id="gar" cx="50%" cy="55%" r="55%">
+            <stop offset="0%" stop-color="#FBF5E5"/>
+            <stop offset="100%" stop-color="#E0D2B0"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="50" cy="60" rx="30" ry="32" fill="url(#gar)"/>
+        <path d="M30 34 Q50 28 70 34" stroke="#C9B98E" stroke-width="1.2" fill="none"/>
+        <path d="M50 30 L50 90" stroke="#D8C9A2" stroke-width="1.2"/>
+        <path d="M36 36 L36 88 M64 36 L64 88" stroke="#D8C9A2" stroke-width="1"/>
+        <path d="M50 18 L52 30 L48 30 Z" fill="#A89A78"/>
+        <path d="M50 22 L46 14 M50 22 L54 14 M50 22 L50 12" stroke="#A89A78" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Chili / pepper -->
+    <div class="floater f6">
+      <svg viewBox="0 0 100 100">
+        <defs>
+          <linearGradient id="chil" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#E96850"/>
+            <stop offset="100%" stop-color="#A8341E"/>
+          </linearGradient>
+        </defs>
+        <path d="M28 26 Q44 24 60 34 Q78 50 70 72 Q60 88 46 84 Q38 80 38 70 Q42 60 52 54 Q60 48 54 40 Q44 34 30 36 Z" fill="url(#chil)"/>
+        <path d="M28 26 Q26 18 34 16 L40 22" fill="#6C8D6F"/>
+        <path d="M34 16 L40 10" stroke="#4A6B4D" stroke-width="2" stroke-linecap="round"/>
+        <path d="M40 40 Q50 42 56 50" stroke="rgba(255,255,255,.35)" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <span class="steam"></span><span class="steam"></span><span class="steam"></span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/>
+          <line x1="6" y1="17" x2="18" y2="17"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Smart Fridge <span class="accent">AI</span></h1>
+        <span class="tagline">tu chef personal con visión por ordenador</span>
+      </div>
+    </div>
+
+    <div style="position: relative;">
+      <button class="ingredient-pill" id="ingredient-pill" aria-label="Ver ingredientes detectados">
+        <span class="dot"></span>
+        <span id="pill-count">0 ingredientes</span>
+      </button>
+      <div class="ingredient-drawer" id="ingredient-drawer" role="dialog" aria-label="Ingredientes detectados">
+        <div class="label">En tu nevera</div>
+        <div class="chips" id="drawer-chips"></div>
+      </div>
+    </div>
+  </header>
+
+  <main id="chat-area">
+    <div id="config-warning" class="config-banner" hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:.35rem"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><strong>Configura la URL:</strong> abre el HTML y cambia <code>FASTAPI_URL</code> al inicio del &lt;script&gt;.
+    </div>
+
+    <!-- Empty state hero (hidden once user sends) -->
+    <section class="hero" id="hero">
+      <span class="eyebrow">listo para cocinar</span>
+      <h2>Dime qué hay en tu nevera y te digo qué <em>cocinar</em>.</h2>
+      <p>Sube una foto del interior y detectaré los ingredientes. Después te propongo recetas, sustituciones y variaciones a tu medida.</p>
+
+      <div class="quick-actions" id="quick-actions">
+        <button class="qa-card" data-action="photo">
+          <div class="qa-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          <div class="qa-body">
+            <div class="qa-title">Foto de mi nevera</div>
+            <div class="qa-sub">Detecto lo que tienes</div>
+          </div>
+        </button>
+        <button class="qa-card" data-action="dinner" data-prompt="¿Qué puedo cenar rápido esta noche? Tengo poco tiempo.">
+          <div class="qa-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18l-2 9H5z"/><path d="M6 11V7a4 4 0 0 1 4-4h0"/><path d="M14 7c0-2 1-4 3-4"/></svg>
+          </div>
+          <div class="qa-body">
+            <div class="qa-title">Receta rápida</div>
+            <div class="qa-sub">Ideas para esta noche</div>
+          </div>
+        </button>
+        <button class="qa-card" data-action="substitute" data-prompt="¿Con qué puedo sustituir el huevo en una receta de bizcocho?">
+          <div class="qa-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+          <div class="qa-body">
+            <div class="qa-title">Sustituciones</div>
+            <div class="qa-sub">¿Sin huevo? ¿Sin lácteos?</div>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <div class="chat" id="chat"></div>
+  </main>
+
+  <footer>
+    <div class="input-container">
+      <div class="image-preview" id="image-preview">
+        <img id="preview-img" alt="" />
+        <div class="meta">
+          <div class="pf-title">Foto lista</div>
+          <div class="filename" id="preview-name">imagen.jpg</div>
+        </div>
+        <button class="remove-btn" id="remove-img" title="Quitar imagen" aria-label="Quitar imagen">×</button>
+      </div>
+
+      <div class="input-bar" id="input-bar">
+        <button class="icon-btn" id="attach-btn" title="Adjuntar foto de tu nevera" aria-label="Adjuntar foto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 17.93 8.8l-8.58 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <input type="file" id="file-input" accept="image/*" hidden />
+        <textarea id="message-input" placeholder="Pregunta a tu chef o sube una foto…" rows="1"></textarea>
+        <button class="icon-btn send" id="send-btn" title="Enviar" aria-label="Enviar" disabled>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="input-footer">
+        Pulsa <kbd>Enter</kbd> para enviar · <kbd>Shift+Enter</kbd> para salto de línea · Arrastra una foto a cualquier parte
+      </div>
+    </div>
+  </footer>
+
+  <!-- Drag & drop overlay -->
+  <div class="drop-overlay" id="drop-overlay">
+    <div class="drop-target">
+      <div class="icon-big">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <h3>Suelta tu foto aquí</h3>
+      <p>Una imagen del interior de tu nevera funciona genial</p>
+    </div>
+  </div>
+
+  <script>
+    // ════════════════════════════════════════════════════════════════
+    // CONFIGURACIÓN — Una sola URL: la de FastAPI
+    // ════════════════════════════════════════════════════════════════
+    //   Local (defensa):    http://localhost:8000/chat
+    //   Desarrollo (ngrok): https://xxxx.ngrok-free.app/chat
+    // ════════════════════════════════════════════════════════════════
+    const FASTAPI_URL = 'http://localhost:8000/chat';
+    // ════════════════════════════════════════════════════════════════
+
+    const sessionId = crypto.randomUUID();
+    let detectedIngredients = [];
+    let selectedFile = null;
+
+    const chatEl         = document.getElementById('chat');
+    const chatArea       = document.getElementById('chat-area');
+    const hero           = document.getElementById('hero');
+    const inputEl        = document.getElementById('message-input');
+    const sendBtn        = document.getElementById('send-btn');
+    const attachBtn      = document.getElementById('attach-btn');
+    const fileInput      = document.getElementById('file-input');
+    const inputBar       = document.getElementById('input-bar');
+    const imagePreview   = document.getElementById('image-preview');
+    const previewImg     = document.getElementById('preview-img');
+    const previewName    = document.getElementById('preview-name');
+    const removeImgBtn   = document.getElementById('remove-img');
+    const ingredientPill = document.getElementById('ingredient-pill');
+    const drawer         = document.getElementById('ingredient-drawer');
+    const drawerChips    = document.getElementById('drawer-chips');
+    const pillCount      = document.getElementById('pill-count');
+    const configWarning  = document.getElementById('config-warning');
+    const dropOverlay    = document.getElementById('drop-overlay');
+    const quickActions   = document.getElementById('quick-actions');
+
+    marked.setOptions({ breaks: true, gfm: true });
+
+    // ── Avatar icons (SVG, no emoji) ───────────────────
+    const AVATAR_SVG = {
+      user: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+      assistant: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>`,
+      system: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`
+    };
+    const ERROR_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:.3rem;color:var(--accent-dark)"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+
+    if (FASTAPI_URL.includes('CAMBIAR')) configWarning.hidden = false;
+
+    // ── Eventos ──────────────────────────────────────────
+
+    inputEl.addEventListener('input', () => {
+      autoResize();
+      updateSendButton();
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!sendBtn.disabled) handleSend();
+      }
+    });
+
+    attachBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      setSelectedFile(file);
+    });
+
+    removeImgBtn.addEventListener('click', clearImage);
+    sendBtn.addEventListener('click', handleSend);
+
+    // Quick actions
+    quickActions.addEventListener('click', (e) => {
+      const card = e.target.closest('.qa-card');
+      if (!card) return;
+      const action = card.dataset.action;
+      const prompt = card.dataset.prompt;
+      if (action === 'photo') {
+        fileInput.click();
+      } else if (prompt) {
+        inputEl.value = prompt;
+        autoResize();
+        updateSendButton();
+        inputEl.focus();
+      }
+    });
+
+    // Ingredient drawer toggle
+    ingredientPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      drawer.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!drawer.contains(e.target) && !ingredientPill.contains(e.target)) {
+        drawer.classList.remove('open');
+      }
+    });
+
+    // Drag & drop anywhere
+    let dragDepth = 0;
+    window.addEventListener('dragenter', (e) => {
+      if (!e.dataTransfer?.types?.includes('Files')) return;
+      e.preventDefault();
+      dragDepth++;
+      dropOverlay.classList.add('active');
+    });
+    window.addEventListener('dragover', (e) => {
+      if (!e.dataTransfer?.types?.includes('Files')) return;
+      e.preventDefault();
+    });
+    window.addEventListener('dragleave', (e) => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) dropOverlay.classList.remove('active');
+    });
+    window.addEventListener('drop', (e) => {
+      if (!e.dataTransfer?.types?.includes('Files')) return;
+      e.preventDefault();
+      dragDepth = 0;
+      dropOverlay.classList.remove('active');
+      const file = [...(e.dataTransfer.files || [])].find(f => f.type.startsWith('image/'));
+      if (file) setSelectedFile(file);
+    });
+
+    // ── Funciones auxiliares ───────────────────────────
+
+    function setSelectedFile(file) {
+      selectedFile = file;
+      previewImg.src = URL.createObjectURL(file);
+      previewName.textContent = file.name;
+      imagePreview.classList.add('active');
+      inputBar.classList.add('has-file');
+      updateSendButton();
+      inputEl.focus();
+    }
+
+    function autoResize() {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+    }
+
+    function updateSendButton() {
+      sendBtn.disabled = !inputEl.value.trim() && !selectedFile;
+    }
+
+    function clearImage() {
+      selectedFile = null;
+      fileInput.value = '';
+      imagePreview.classList.remove('active');
+      inputBar.classList.remove('has-file');
+      updateSendButton();
+    }
+
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        chatArea.scrollTop = chatArea.scrollHeight;
+      });
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function hideHero() {
+      if (!hero.classList.contains('gone')) {
+        hero.classList.add('gone');
+        hero.style.transition = 'opacity .35s ease, transform .35s ease, max-height .4s ease, margin .35s ease';
+        hero.style.opacity = '0';
+        hero.style.transform = 'translateY(-8px)';
+        hero.style.maxHeight = hero.offsetHeight + 'px';
+        requestAnimationFrame(() => {
+          hero.style.maxHeight = '0px';
+          hero.style.margin = '0';
+          hero.style.padding = '0';
+        });
+        setTimeout(() => hero.remove(), 450);
+      }
+    }
+
+    function addMessage(role, content, image = null, ingredients = null) {
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.innerHTML = AVATAR_SVG[role] || AVATAR_SVG.assistant;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      let imgWrap = null;
+      if (image) {
+        imgWrap = document.createElement('div');
+        imgWrap.className = 'img-wrap';
+        const img = document.createElement('img');
+        img.src = image;
+        imgWrap.appendChild(img);
+        bubble.appendChild(imgWrap);
+      }
+
+      const textDiv = document.createElement('div');
+      if (role === 'assistant' || role === 'system') {
+        textDiv.innerHTML = marked.parse(content || '');
+      } else if (content) {
+        textDiv.textContent = content;
+      }
+      bubble.appendChild(textDiv);
+
+      if (ingredients && ingredients.length > 0) {
+        const chipsDiv = document.createElement('div');
+        chipsDiv.className = 'ingredient-chips';
+        ingredients.forEach((ing, idx) => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.style.animationDelay = `${idx * 0.07}s`;
+          chip.textContent = ing;
+          chipsDiv.appendChild(chip);
+        });
+        bubble.appendChild(chipsDiv);
+
+        // Sparkle burst after chips arrive
+        setTimeout(() => sparkleBurst(chipsDiv), 200);
+      }
+
+      div.appendChild(avatar);
+      div.appendChild(bubble);
+      chatEl.appendChild(div);
+      scrollToBottom();
+      return { node: div, imgWrap };
+    }
+
+    function sparkleBurst(container) {
+      const rect = container.getBoundingClientRect();
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `position:absolute;inset:0;pointer-events:none;`;
+      container.style.position = 'relative';
+      container.appendChild(overlay);
+      const colors = ['var(--accent)', 'var(--accent-2)', 'var(--olive-2)', '#E8B96B'];
+      for (let i = 0; i < 14; i++) {
+        const s = document.createElement('span');
+        s.className = 'sparkle';
+        const angle = (Math.PI * 2 * i) / 14 + Math.random() * 0.4;
+        const dist = 30 + Math.random() * 40;
+        s.style.left = `${20 + Math.random() * (rect.width - 40)}px`;
+        s.style.top = `${rect.height / 2}px`;
+        s.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+        s.style.setProperty('--dy', `${Math.sin(angle) * dist - 10}px`);
+        s.style.background = colors[i % colors.length];
+        s.style.animationDelay = `${Math.random() * 0.3}s`;
+        overlay.appendChild(s);
+      }
+      setTimeout(() => overlay.remove(), 1500);
+    }
+
+    function showTyping(label = '', variant = 'dots') {
+      const div = document.createElement('div');
+      div.className = 'message assistant';
+      div.id = 'typing-indicator';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      const isDetect = label.toLowerCase().includes('detect');
+      avatar.innerHTML = isDetect ? AVATAR_SVG.system : AVATAR_SVG.assistant;
+      if (variant === 'cooking' || isDetect) avatar.style.background = 'linear-gradient(135deg, var(--olive-2), var(--olive))';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      if (variant === 'cooking') {
+        bubble.innerHTML = `
+          <div class="cooking-indicator">
+            <span class="cooking-pan" aria-hidden="true">
+              <svg viewBox="0 0 32 32">
+                <g class="steam-line"><path d="M11 4 c -1 2, 1 3, 0 5" stroke="var(--text-soft)" stroke-width="1.6" stroke-linecap="round" fill="none"/></g>
+                <g class="steam-line"><path d="M16 3 c -1 2, 1 3, 0 5" stroke="var(--text-soft)" stroke-width="1.6" stroke-linecap="round" fill="none"/></g>
+                <g class="steam-line"><path d="M21 4 c -1 2, 1 3, 0 5" stroke="var(--text-soft)" stroke-width="1.6" stroke-linecap="round" fill="none"/></g>
+                <g class="pan">
+                  <rect x="4" y="14" width="20" height="9" rx="2" fill="var(--accent)"/>
+                  <rect x="4" y="13" width="20" height="3" rx="1.5" fill="var(--accent-dark)"/>
+                  <rect x="23" y="15" width="7" height="2" rx="1" fill="var(--accent-dark)"/>
+                </g>
+              </svg>
+            </span>
+            <span>${label || 'Cocinando ideas'}<span class="ellipsis-anim"></span></span>
+          </div>
+        `;
+      } else {
+        const labelHTML = label ? `<span class="typing-label">${label}</span>` : '';
+        bubble.innerHTML = `<div class="typing">${labelHTML}<span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+      }
+
+      div.appendChild(avatar);
+      div.appendChild(bubble);
+      chatEl.appendChild(div);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      const t = document.getElementById('typing-indicator');
+      if (t) {
+        t.style.transition = 'opacity .2s ease, transform .2s ease';
+        t.style.opacity = '0';
+        t.style.transform = 'translateY(-4px)';
+        setTimeout(() => t.remove(), 200);
+      }
+    }
+
+    function updateIngredientsPill() {
+      if (detectedIngredients.length > 0) {
+        ingredientPill.classList.add('active');
+        pillCount.textContent = `${detectedIngredients.length} ingrediente${detectedIngredients.length === 1 ? '' : 's'}`;
+        // Update drawer
+        drawerChips.innerHTML = '';
+        detectedIngredients.forEach(i => {
+          const c = document.createElement('span');
+          c.className = 'chip-mini';
+          c.textContent = i;
+          drawerChips.appendChild(c);
+        });
+      } else {
+        ingredientPill.classList.remove('active');
+        drawer.classList.remove('open');
+      }
+    }
+
+    // ── Una sola llamada a FastAPI (hace TODO) ──────
+    async function callFastAPI(file, message, ingredients) {
+      const formData = new FormData();
+      formData.append('message', message);
+      formData.append('sessionId', sessionId);
+      formData.append('ingredientsJson', JSON.stringify(ingredients));
+      if (file) formData.append('file', file);
+
+      const res = await fetch(FASTAPI_URL, { method: 'POST', body: formData });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      return await res.json();
+    }
+
+    // ── Orquestador principal con efecto wow ────────
+    async function handleSend() {
+      const message = inputEl.value.trim();
+      if (!message && !selectedFile) return;
+
+      hideHero();
+
+      const userImg = selectedFile ? URL.createObjectURL(selectedFile) : null;
+      const userText = message || (selectedFile ? '(Foto subida)' : '');
+      const userMsg = addMessage('user', userText, userImg);
+
+      const fileToProcess  = selectedFile;
+      const messageForChef = message || '¿Qué puedo cocinar con esto?';
+
+      inputEl.value = '';
+      autoResize();
+      clearImage();
+      sendBtn.disabled = true;
+
+      try {
+        if (fileToProcess) {
+          // Scanning effect on the user's uploaded image
+          if (userMsg.imgWrap) userMsg.imgWrap.classList.add('scanning');
+          showTyping('Detectando ingredientes', 'dots');
+        } else {
+          showTyping('', 'cooking');
+        }
+
+        const data = await callFastAPI(fileToProcess, messageForChef, detectedIngredients);
+
+        // Stop scanning
+        if (userMsg.imgWrap) userMsg.imgWrap.classList.remove('scanning');
+        hideTyping();
+        await sleep(120);
+
+        // ── Efecto WOW ──
+        if (fileToProcess && data.ingredients && data.ingredients.length > 0) {
+          detectedIngredients = data.ingredients;
+          updateIngredientsPill();
+
+          addMessage(
+            'system',
+            `He detectado **${data.ingredients.length} ingrediente${data.ingredients.length === 1 ? '' : 's'}** en tu nevera:`,
+            null,
+            data.ingredients
+          );
+
+          await sleep(Math.min(1100, 500 + data.ingredients.length * 70));
+          showTyping('', 'cooking');
+          await sleep(650);
+          hideTyping();
+          await sleep(100);
+        } else if (fileToProcess && (!data.ingredients || data.ingredients.length === 0)) {
+          addMessage('system', `${ERROR_SVG}No he detectado ningún ingrediente en la foto. Prueba con una imagen más clara o con mejor iluminación.`);
+          return;
+        }
+
+        if (data.response) {
+          addMessage('assistant', data.response);
+        } else {
+          addMessage('assistant', 'No he recibido una respuesta clara. ¿Puedes intentarlo de nuevo?');
+        }
+
+      } catch (err) {
+        if (userMsg.imgWrap) userMsg.imgWrap.classList.remove('scanning');
+        hideTyping();
+        console.error(err);
+        addMessage('assistant', `${ERROR_SVG}**Algo ha fallado.**\n\n\`${err.message}\`\n\n*Comprueba que FastAPI esté corriendo y que pueda llamar a n8n.*`);
+      } finally {
+        updateSendButton();
+        inputEl.focus();
+      }
+    }
+
+    // Animated ellipsis for "Cocinando ideas..."
+    const styleTag = document.createElement('style');
+    styleTag.textContent = `
+      .ellipsis-anim::after {
+        content: '';
+        display: inline-block;
+        width: 1.2em;
+        text-align: left;
+        animation: ell 1.4s steps(4) infinite;
+      }
+      @keyframes ell {
+        0%   { content: ''; }
+        25%  { content: '.'; }
+        50%  { content: '..'; }
+        75%  { content: '...'; }
+        100% { content: ''; }
+      }
+    `;
+    document.head.appendChild(styleTag);
+  </script>
+</body>
+</html>
